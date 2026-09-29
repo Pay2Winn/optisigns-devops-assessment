@@ -6,11 +6,11 @@ resources:
 - frontend.yaml
 # Existing PostgreSQL, NFS, uploads PVC, gateway and Secrets are prerequisites.
 images:
-- digest: sha256:453fdc14277642f8b8b390cc5d6819163101bd1bb1650ff2e35ebf811b4f89fa
+- digest: sha256:24df474ee9f5007a5e0172a9e6d8d1f30b433c4bd07f32a3cd1be5d00d76ecb6
   name: demoooo.azurecr.io/optisigns-backend
   newName: demoooo.azurecr.io/optisigns-backend
-  newTag: 5ea415328803044e087848440c8fe5c16965b8e5
-- digest: sha256:fd567acd570add46124a26ff45e6b952a673b7322c2b06da72f4ed36f8da702b
+  newTag: 149b8cf
+- digest: sha256:3d3bb0c4dbb0acf1f8cab037f40a8f22d5b4fa880fc7641b3b558a68b9222045
   name: demoooo.azurecr.io/optisigns-frontend
   newName: demoooo.azurecr.io/optisigns-frontend
-  newTag: 5ea415328803044e087848440c8fe5c16965b8e5
+  newTag: 149b8cf
