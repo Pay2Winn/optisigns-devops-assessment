@@ -13,3 +13,4 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 USER node
 CMD ["node", "dist/main.js"]
+
