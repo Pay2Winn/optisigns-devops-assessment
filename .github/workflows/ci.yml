@@ -10,18 +10,50 @@ on:
 permissions:
   contents: read
 
+env:
+  ACR_SERVER: demoooo.azurecr.io
+
 jobs:
   build:
-    name: Build backend and frontend
+    name: Build and push images
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Build backend
-        run: docker build --tag optisigns-backend:${{ github.sha }} ./backend
+        run: |
+          docker build \
+            --tag "$ACR_SERVER/optisigns-backend:$GITHUB_SHA" \
+            ./backend
 
       - name: Build frontend
-        run: docker build --tag optisigns-frontend:${{ github.sha }} ./frontend
+        run: |
+          docker build \
+            --tag "$ACR_SERVER/optisigns-frontend:$GITHUB_SHA" \
+            ./frontend
+
+      - name: Log in to ACR
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+        run: |
+          test -n "$ACR_USERNAME" || { echo "Missing ACR_USERNAME"; exit 1; }
+          test -n "$ACR_PASSWORD" || { echo "Missing ACR_PASSWORD"; exit 1; }
+          printf '%s' "$ACR_PASSWORD" |
+            docker login "$ACR_SERVER" \
+              --username "$ACR_USERNAME" \
+              --password-stdin
+
+      - name: Push images
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          docker push "$ACR_SERVER/optisigns-backend:$GITHUB_SHA"
+          docker push "$ACR_SERVER/optisigns-frontend:$GITHUB_SHA"
+
+      - name: Log out of ACR
+        if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: docker logout "$ACR_SERVER"
