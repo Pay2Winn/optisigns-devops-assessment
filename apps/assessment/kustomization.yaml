@@ -2,13 +2,15 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: optisigns-assessment
 resources:
-  - backend.yaml
-  - frontend.yaml
+- backend.yaml
+- frontend.yaml
 # Existing PostgreSQL, NFS, uploads PVC, gateway and Secrets are prerequisites.
 images:
-  - name: demoooo.azurecr.io/optisigns-backend
-    newTag: 7de33692047c289cdbf1640082a42bf0f5983420
-    digest: sha256:9f368f14fbbc43e395c4a7e3c7d21f5788ad62d7fe939f67620c3a6ca84af77f
-  - name: demoooo.azurecr.io/optisigns-frontend
-    newTag: 7de33692047c289cdbf1640082a42bf0f5983420
-    digest: sha256:0424392fb86142a7dee5d2c3be7376542cebd9927a26844724e143ea591cd3b6
+- digest: sha256:453fdc14277642f8b8b390cc5d6819163101bd1bb1650ff2e35ebf811b4f89fa
+  name: demoooo.azurecr.io/optisigns-backend
+  newName: demoooo.azurecr.io/optisigns-backend
+  newTag: 5ea415328803044e087848440c8fe5c16965b8e5
+- digest: sha256:fd567acd570add46124a26ff45e6b952a673b7322c2b06da72f4ed36f8da702b
+  name: demoooo.azurecr.io/optisigns-frontend
+  newName: demoooo.azurecr.io/optisigns-frontend
+  newTag: 5ea415328803044e087848440c8fe5c16965b8e5
