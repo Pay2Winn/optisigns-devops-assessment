@@ -16,6 +16,8 @@ import Upload from 'graphql-upload/GraphQLUpload.mjs';
 import { GraphQLError } from 'graphql';
 import { db, initialize } from './db.js';
 import { root, probe } from './media.js';
+import { authConfig, installAuth } from './auth.js';
+authConfig();
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const present = (v: any) => ({ ...v, createdAt: v.created_at.toISOString(), originalUrl: `/media/${v.id}/original.mp4` });
 const typeDefs = `scalar Upload
@@ -70,6 +72,7 @@ http.get('/health/ready', async (_: any, res: any) => {
   try { await db.query('SELECT 1'); res.json({ status: 'ok' }); }
   catch { res.status(503).json({ status: 'unavailable' }); }
 });
+await installAuth(http);
 http.use('/media', async (req: any, res: any, next: any) => {
   const parts = req.path.split('/').filter(Boolean);
   if (!uuid.test(parts[0] || '')) return res.sendStatus(404);

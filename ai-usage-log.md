@@ -33,6 +33,14 @@ AI generated the current source, Kubernetes manifests, build/test scripts and in
 - Approved cluster deletion initially hung. After a separately approved Docker Desktop restart, deletion and fresh-cluster deployment succeeded on the same host. Cleanup now drains NFS clients before the server; the complete healthy-cluster draining path remains unverified.
 - Fresh-cluster acceptance stopped after PostgreSQL replacement because application containers were unavailable. Added an idle database pool error handler and waits for application recovery; follow the latest evidence for retest outcomes.
 
+## Optional cloud authentication (2026-09-29)
+
+The user subsequently requested AKS deployment and a single reviewer login, and authorized committing directly to main and publishing images tagged with the source commit SHA. Authentication is opt-in through AUTH_ENABLED=true; local deployment remains unauthenticated by default. Configure AUTH_USERNAME, AUTH_PASSWORD_HASH (hex salt:scrypt-derived hex key), and PUBLIC_ORIGIN (HTTPS origin) through runtime secrets/configuration, never build arguments or committed credentials.
+
+Docker builds of both applications passed. `backend/test-auth.mjs` passed in the backend image. `backend/test-auth-integration.mjs` passed with disposable PostgreSQL and two Express instances: anonymous GraphQL/media denial, wrong password, Origin checks, secure cookie attributes, shared sessions, logout invalidation and login throttling. The harness forwards cookies programmatically over local HTTP; it does not prove browser HTTPS or full NestJS/GraphQL integration. Nginx configuration validation passed. The disposable database and network were removed. Direct host build initially failed because TypeScript dependencies were not installed; Docker used the lockfile instead.
+
+Login throttling uses shared database counters, including a global limit, and socket addresses rather than untrusted forwarded headers. Behind a proxy, clients share its address bucket. Browser HTTPS, full application authentication, session expiry/database-failure behavior and AKS storage/deployment still require verification. Existing published reviewer-auth-v1 images contain no reviewer password; authentication must be explicitly enabled at deployment.
+
 ## Verification and outstanding review
 
 See evidence files and failover-test.md. Passing builds do not establish production security. Worker probes and upload boundary checks were added. Full dependency/image security review, clean-machine replay, automated orphan cleanup and sustained concurrent upload tests remain outstanding. Documentation distinguishes these limits from verified behavior. The candidate should review the code, run the scripts and explain the trade-offs before submission. The user subsequently authorized GitHub submission to Pay2Winn/optisigns-devops-assessment. Local credentials, kubeconfig, sample videos and the supplied assessment PDF are excluded from the submission.
