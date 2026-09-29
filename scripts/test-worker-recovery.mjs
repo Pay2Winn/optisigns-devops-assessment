@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const args=['--kubeconfig',root+'.local/kubeconfig','--context','kind-optisigns-assessment','-n','optisigns-assessment'];
 const logs=[];
-function log(s){console.log(s);logs.push(s);writeFileSync(root+'evidence/worker-recovery.txt',logs.join('\n')+'\n');}
+function log(s){console.log(s);logs.push(s);writeFileSync(root+'docs/evidence/worker-recovery.txt',logs.join('\n')+'\n');}
 function k(...a){return execFileSync('kubectl',[...args,...a],{encoding:'utf8',timeout:180000});}
 async function query(id){const r=await fetch('http://localhost:8080/graphql',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:'query($id:ID!){video(id:$id){id status outputs{label url} error}}',variables:{id}})});const b=await r.json();assert(!b.errors,JSON.stringify(b));return b.data.video;}
 log(new Date().toISOString());

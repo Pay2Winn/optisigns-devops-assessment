@@ -1,104 +1,73 @@
-# Local video processing assessment
+# Video upload and processing platform
 
-React + NestJS GraphQL + FFmpeg on local Kubernetes. MP4 originals and generated outputs are shared through real NFSv4.1 mounts. PostgreSQL stores metadata and a durable leased work queue.
+A React frontend and NestJS GraphQL backend for uploading MP4 videos, including 4K input. A separate FFmpeg worker generates 2K, 1080p, 720p, 480p versions and a JPEG thumbnail. Backend pods and workers share files through Network File System (NFS) storage; PostgreSQL stores metadata and processing jobs.
 
-The core solution runs locally without Azure or another paid cloud service. Follow the numbered steps in order. Commands below use **Git Bash on Windows or Bash on Linux**, not PowerShell.
+The required solution runs on local Kubernetes without paid cloud services. Azure deployment and delivery automation are optional additions.
+
+## What to review
+
+| Assessment requirement | Implementation or document |
+|---|---|
+| Upload, status, thumbnails and video links | [frontend/](frontend/) |
+| GraphQL API, health checks and video processing | [backend/](backend/) |
+| Local Kubernetes, shared storage, replicas and probes | [deploy/](deploy/) — root-level YAML manifests |
+| Deployment, verification and cleanup utilities | [scripts/](scripts/) |
+| Architecture, data flow and trade-offs | [architecture.md](architecture.md) |
+| Failover cases, results and limitations | [failover-test.md](failover-test.md) |
+| Production scaling, security, cost and operations | [production-notes.md](production-notes.md) |
+| AI usage, corrections and verification | [ai-usage-log.md](ai-usage-log.md) |
+| Detailed reproduction commands | [docs/local-guide.md](docs/local-guide.md) |
+| Recorded test results | [docs/evidence/](docs/evidence/) |
+
+```text
+.
+├── README.md
+├── architecture.md
+├── failover-test.md
+├── production-notes.md
+├── ai-usage-log.md
+├── frontend/               # React source and Dockerfile
+├── backend/                # NestJS, worker and Dockerfile
+├── deploy/                 # Local manifests; optional aks/ and argocd/
+├── scripts/                # Deployment, verification and cleanup
+├── docs/                   # Detailed guide and supporting evidence
+└── .github/workflows/      # Build and GitOps automation
+```
 
 ## 1. Prerequisites
 
-Install and start the following before deploying:
+- Docker running Linux containers; Docker Desktop with WSL2 on Windows.
+- kind, kubectl, Git, Bash and OpenSSL.
+- Node.js 22+ for verification scripts.
+- Approximately 8 GiB Docker memory, 20–30 GB free disk, internet access and free port 8080.
+- A Docker host kernel supporting NFS. See [platform requirements](docs/local-guide.md#1-prerequisites).
 
-- [Docker](https://docs.docker.com/get-started/get-docker/) with Linux containers. On Windows, use Docker Desktop with its WSL2 backend; Ubuntu Docker integration is not required for the tested Git Bash route.
-- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/), [kubectl](https://kubernetes.io/docs/tasks/tools/), Git, Bash and OpenSSL, available on your terminal's PATH.
-- [Node.js 22+](https://nodejs.org/) for host-side test scripts. Application dependencies and FFmpeg are installed inside Docker images, not on your host.
-- Approximately 8 GiB available to Docker and 20–30 GB free disk recommended. The tested Windows host reported about 7.4 GiB Docker memory.
-- Internet access for package/container downloads and an unused local port 8080.
+Run commands in **Git Bash on Windows or Bash on Linux** from the repository root.
 
-Open a new terminal after installing tools, then check:
-
-```bash
-git --version
-docker info
-kind version
-kubectl version --client
-openssl version
-node --version
-```
-
-Docker must report a running Linux engine. The storage deployment loads Linux NFS modules through the kind node; the Docker host kernel must support them. A platform without these modules needs a different NFS implementation, not a direct hostPath substitute.
-
-## 2. Clone the repository
+## 2. Build and deploy
 
 ```bash
 git clone https://github.com/Pay2Winn/optisigns-devops-assessment.git
 cd optisigns-devops-assessment
-```
-
-If the repository is private, authenticate with a GitHub account that has access. Run all remaining commands from this directory. Do not put access tokens in commands or files committed to Git.
-
-## 3. Build and deploy
-
-```bash
 bash scripts/deploy.sh
 ```
 
-The script creates the named kind cluster `optisigns-assessment`, deploys shared storage and PostgreSQL, builds and loads application images, then deploys the backend, worker and frontend. No separate host-side `npm install` is required. The first run takes longer because it downloads images and dependencies.
+The script creates the local kind cluster, deploys NFS and PostgreSQL, builds the application images and starts frontend, backend and worker workloads. It does not deploy to Azure. Run the same deployment command to rebuild after source changes.
 
-Deployment uses `.local/kubeconfig` and the explicit context `kind-optisigns-assessment`; it does not select or modify an existing cloud cluster. Generated database credentials remain under ignored `.local/`. Do not share this directory.
+## 3. Upload and verify a video
 
-Set up a shell command array for the checks below. Repeat this block if you open a new terminal:
+1. Open **http://localhost:8080**.
+2. Select a short MP4 video, preferably 4K, and click **Upload & process**.
+3. Confirm upload success and wait for status `READY`.
+4. Play the original, view the thumbnail and open all four generated video versions.
 
-```bash
-export MSYS_NO_PATHCONV=1
-ROOT="$(pwd)"
-if command -v cygpath >/dev/null; then ROOT="$(cygpath -m "$ROOT")"; fi
-K=(kubectl --kubeconfig "$ROOT/.local/kubeconfig" --context kind-optisigns-assessment -n optisigns-assessment)
-"${K[@]}" get deployments,pods,pvc
-```
+For a 3840×2160 sample, expected outputs are 2560×1440 (2K/QHD), 1920×1080, 1280×720, 852×480 and a 480×270 thumbnail. QHD is this project's interpretation of the assignment's unspecified “2K”.
 
-Expected deployment readiness: backend **2/2**, frontend **2/2**, worker **1/1**, PostgreSQL **1/1**, NFS server **1/1**. Both persistent volume claims should be `Bound`.
+A repeatable sample generator and automated output checks are documented in [the video verification guide](docs/local-guide.md#4-create-and-verify-a-short-4k-sample). That step also creates the sample needed by the worker-recovery test.
 
-## 4. Create and verify a short 4K sample
+## 4. Run failover tests
 
-Run this before failover tests: they require a successfully processed video. The test generates a two-second 3840×2160 MP4 inside a backend container, uploads it through GraphQL and waits for processing.
-
-```bash
-"${K[@]}" wait --for=condition=Ready pod -l app=backend --timeout=180s
-POD="$("${K[@]}" get pods -l app=backend -o jsonpath='{.items[0].metadata.name}')"
-"${K[@]}" exec -i "$POD" -- sh -c 'cat > /tmp/test-video.mjs' < scripts/test-video.mjs
-"${K[@]}" exec "$POD" -- node /tmp/test-video.mjs
-
-# Copy the generated sample to the host for browser and worker-recovery tests.
-"${K[@]}" cp "${POD}:/tmp/assessment-4k.mp4" "$ROOT/.local/browser-sample.mp4"
-```
-
-Use the same pod for copying and executing the script because `/tmp` is container-local. Stop and investigate if the test fails; do not continue as though the sample is ready.
-
-Expected output includes `PASS invalid MP4 rejected`, five output checks, `PASS HTTP Range` and `PASS video end-to-end` with status `READY`. FFprobe inspects every output and checks rendition dimension bounds/even dimensions; the HTTP Range check expects status 206 and exactly 100 requested bytes.
-
-| Output | Expected dimensions for this sample |
-|---|---|
-| 2K (QHD) | 2560×1440 |
-| 1080p | 1920×1080 |
-| 720p | 1280×720 |
-| 480p | 852×480 |
-| JPEG thumbnail | 480×270 |
-
-The assessment does not define 2K; this project chooses QHD rather than DCI 2048×1080. Aspect ratio and even dimensions are preserved. Small inputs may be upscaled; portrait inputs fit within each bounding box.
-
-## 5. Upload and inspect the frontend
-
-1. Open **http://localhost:8080**. The automated sample should already appear as `READY`.
-2. Select `.local/browser-sample.mp4` using the file chooser and click **Upload & process**. You may also use your own short MP4.
-3. Confirm the upload-success message, then wait for `READY`. Status is polled every three seconds; short videos may transition too quickly to observe every intermediate state.
-4. Play the original, open the thumbnail and access all four rendition links.
-5. If a job reports `FAILED`, inspect worker logs using the troubleshooting commands below.
-
-Admission limits: 512 MiB/file, one file/request, two simultaneous multipart requests per backend, ten-minute duration and 4096 pixels per side. Uploads are streamed with temporary disk buffering and are not resumable. No GPU is required.
-
-## 6. Run persistence and failover tests
-
-Wait until all videos are `READY` or `FAILED`, then run the following **sequentially**, without concurrent browser uploads:
+First complete the sample verification above. Wait for processing to finish and stop browser uploads. Run these commands one at a time; stop if any test fails:
 
 ```bash
 bash scripts/test-storage.sh
@@ -108,63 +77,31 @@ node scripts/test-failover.mjs
 node scripts/test-worker-recovery.mjs
 ```
 
-| Test | What it does |
-|---|---|
-| Storage | Verifies a real NFSv4.1 mount, shared reads and unchanged file checksum after replacing a storage-test pod. |
-| Database | Restarts PostgreSQL, checks the persisted test row and waits for deployed application pods to recover. Temporary database unavailability is expected. |
-| Upload boundaries | Checks invalid IDs, required preflight header, oversized declared body, interrupted upload and inaccessible unpublished media. It does not transmit a full oversized file to test streamed size enforcement. |
-| Failover | Replaces backend/frontend pods, samples requests, checks original/output checksums, rolls out a configuration revision and undoes it. |
-| Worker recovery | Uploads `.local/browser-sample.mp4`, abruptly stops the worker container through the node runtime and verifies retry to `READY` with all five output URLs accessible. |
+These tests check shared storage, database persistence, upload validation, backend/frontend replacement, file preservation, configuration rollout/rollback and worker retry. They intentionally interrupt local workloads. Results and limitations are in [failover-test.md](failover-test.md); detailed steps are in [the local guide](docs/local-guide.md#6-run-persistence-and-failover-tests).
 
-The rollback test restores a pod-template environment-variable revision; it verifies actual replacement and configuration restoration, not different application code. These are finite observations, not a zero-downtime guarantee.
+## 5. Cleanup
 
-Most test scripts write their results under [evidence/](evidence/); the video test prints to the terminal. Re-running tests can replace recorded evidence and appear as Git changes. Additional queue ownership/retry testing is described in [failover-test.md](failover-test.md).
-
-## 7. Troubleshooting and redeployment
-
-Using the `K` array from step 3:
-
-```bash
-"${K[@]}" get pods,pvc
-"${K[@]}" get events --sort-by=.metadata.creationTimestamp
-"${K[@]}" logs deployment/backend --tail=100
-"${K[@]}" logs deployment/worker --tail=100
-"${K[@]}" logs deployment/nfs-server --tail=100
-```
-
-- **Docker connection error:** start Docker Desktop and verify Linux containers with `docker info`.
-- **Missing tool:** install it or fix PATH, then open a new Git Bash terminal.
-- **Port 8080 already in use:** stop the conflicting process before cluster creation.
-- **NFS mount failure:** inspect events and server logs; verify host kernel NFS support. Do not replace NFS with hostPath and claim the same test passed.
-- **Upload/processing failure:** check the documented input limits and backend/worker logs.
-
-To rebuild and redeploy after a source change:
-
-```bash
-bash scripts/deploy.sh
-```
-
-The original cluster was deleted with approval and a fresh cluster deployed on the same host; see [clean-deploy-retry.txt](evidence/clean-deploy-retry.txt). This reused installed tools, local credentials and cached images. It is not validation on a different clean machine. The final version also passed [repeat deployment](evidence/redeploy-test.txt).
-
-## 8. Cleanup
-
-**Warning: this deletes the named cluster and all its database/video data.** Export anything you need first.
+**Warning: this deletes the local `optisigns-assessment` cluster and all video/database data inside it. Export anything needed first. It does not remove Azure resources.**
 
 ```bash
 bash scripts/cleanup.sh --delete-assessment-data
-kind get clusters
 ```
 
-After successful cleanup, `optisigns-assessment` should no longer appear. The script does not delete other clusters or run a global Docker prune.
+Source, recorded evidence, local credential files and cached images remain. See [cleanup details and known limitations](docs/local-guide.md#8-cleanup).
 
-Source, local credential files, evidence and cached Docker images remain. `.local/` is excluded from Git and must not be shared. Initial cluster deletion hung and required a separately approved Docker Desktop restart; the retry succeeded. Cleanup now drains NFS clients before stopping the server, but that full ordered path on a healthy populated cluster has not yet been demonstrated. Do not restart Docker without considering other local containers it would interrupt.
+## Optional: Azure and delivery automation
 
-## Documentation and security boundary
+An additional deployment has run on Azure Kubernetes Service (AKS), using Azure Container Registry and Argo CD.
 
-- [Architecture](architecture.md): components, data flow, storage, leases and limitations.
-- [Failover tests](failover-test.md): results, failures, evidence and repeat instructions.
-- [Production notes](production-notes.md): scaling, security, observability, cost and cloud considerations.
-- [AI usage log](ai-usage-log.md): generated work, decisions, mistakes and verification.
-- [Recorded evidence](evidence/): actual test output, including retained failures.
+- GitHub Actions builds changed frontend/backend components independently and pushes commit-tagged images.
+- The workflow updates immutable image digests on the separate `gitops` branch.
+- Kustomize manages image references; one Argo CD Application automatically synchronizes changes to the cluster.
+- Configuration: [GitHub Actions workflow](.github/workflows/ci.yml) and [Argo CD Application](deploy/argocd/application.yaml). Workload manifests are on `gitops` under `apps/assessment/`.
 
-This is a **local, unauthenticated demo bound to localhost**. Do not expose it publicly. One host, one Kubernetes node, one PostgreSQL instance and one NFS server do not provide machine-level high availability. Cloud deployment is optional and has not been performed.
+The assignment's explicit optional bonus is cloud deployment; this automation supports it. A complete cloud provisioning, cost estimate and cleanup runbook is still outstanding. Cloud resources are not needed for the local instructions above.
+
+## Limits and troubleshooting
+
+The local configuration is unauthenticated and intended for localhost only. One node, one PostgreSQL instance and one NFS server do not provide machine-level high availability. Uploads are limited to 512 MiB and ten minutes; they are not resumable.
+
+Keep `.local/` private: it contains ignored credentials and local state. For troubleshooting, detailed commands and verification caveats, use [the local guide](docs/local-guide.md#7-troubleshooting-and-redeployment).

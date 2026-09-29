@@ -6,8 +6,8 @@ if command -v cygpath >/dev/null 2>&1; then
   ROOT="$(cygpath -m "$ROOT")"
 fi
 K=(kubectl --kubeconfig "$ROOT/.local/kubeconfig" --context kind-optisigns-assessment -n optisigns-assessment)
-mkdir -p "$ROOT/evidence"
-exec > >(tee "$ROOT/evidence/nfs-smoke-test.txt") 2>&1
+mkdir -p "$ROOT/docs/evidence"
+exec > >(tee "$ROOT/docs/evidence/nfs-smoke-test.txt") 2>&1
 set -x
 date -u
 "${K[@]}" wait --for=condition=Ready pod/nfs-writer pod/nfs-reader --timeout=120s

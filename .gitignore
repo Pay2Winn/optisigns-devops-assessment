@@ -4,4 +4,4 @@ dist/
 .env
 .env.*
 *.log
-/OptiSigns-DevOps-K8s-Assessment.docx.pdf
+/docs/OptiSigns-DevOps-K8s-Assessment.docx.pdf

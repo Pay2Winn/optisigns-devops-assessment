@@ -3,7 +3,7 @@ import http from 'node:http';
 import {writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 const logs=[];
-function log(s){logs.push(s);console.log(s);writeFileSync(fileURLToPath(new URL('../evidence/boundaries-test.txt',import.meta.url)),logs.join('\n')+'\n');}
+function log(s){logs.push(s);console.log(s);writeFileSync(fileURLToPath(new URL('../docs/evidence/boundaries-test.txt',import.meta.url)),logs.join('\n')+'\n');}
 async function request(query,variables={}){return (await fetch('http://localhost:8080/graphql',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,variables})})).json();}
 log(new Date().toISOString());
 assert((await request('query($id:ID!){video(id:$id){id}}',{id:"not-a-uuid'"})).errors);log('PASS invalid video ID rejected');

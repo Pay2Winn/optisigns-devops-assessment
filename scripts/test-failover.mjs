@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const args=['--kubeconfig',root+'.local/kubeconfig','--context','kind-optisigns-assessment','-n','optisigns-assessment'];
 const log=[];
-function record(s){console.log(s);log.push(s);writeFileSync(root+'evidence/failover-test.txt',log.join('\n')+'\n');}
+function record(s){console.log(s);log.push(s);writeFileSync(root+'docs/evidence/failover-test.txt',log.join('\n')+'\n');}
 function k(...a){return execFileSync('kubectl',[...args,...a],{encoding:'utf8',timeout:180000});}
 async function video(){const r=await fetch('http://localhost:8080/graphql',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:'{videos{id status originalUrl outputs{url}}}'})});const b=await r.json();assert(!b.errors);return b.data.videos.find(v=>v.status==='READY');}
 async function hash(url){const r=await fetch('http://localhost:8080'+url);assert.equal(r.status,200);return createHash('sha256').update(Buffer.from(await r.arrayBuffer())).digest('hex');}

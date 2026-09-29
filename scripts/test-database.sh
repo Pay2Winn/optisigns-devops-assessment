@@ -4,8 +4,8 @@ export MSYS_NO_PATHCONV=1
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if command -v cygpath >/dev/null 2>&1; then ROOT="$(cygpath -m "$ROOT")"; fi
 K=(kubectl --kubeconfig "$ROOT/.local/kubeconfig" --context kind-optisigns-assessment -n optisigns-assessment)
-mkdir -p "$ROOT/evidence"
-exec > >(tee "$ROOT/evidence/database-smoke-test.txt") 2>&1
+mkdir -p "$ROOT/docs/evidence"
+exec > >(tee "$ROOT/docs/evidence/database-smoke-test.txt") 2>&1
 set -x
 date -u
 "${K[@]}" exec deployment/postgres -- psql -U postgres -d videos -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS storage_probe (id integer PRIMARY KEY, value text NOT NULL); INSERT INTO storage_probe VALUES (1, 'assessment-persistence') ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value;"

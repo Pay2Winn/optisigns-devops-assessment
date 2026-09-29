@@ -1,6 +1,6 @@
 # Failover tests
 
-Tests were run against the dedicated local kind cluster, never Azure. Raw evidence is under `evidence/`.
+The cases below describe tests against the dedicated local kind cluster, not Azure. Raw evidence is under [docs/evidence/](docs/evidence/). Additional local `aks-*` records, where present, are separate cloud runs and are not evidence for these local cases.
 
 | Case | Observed result | Evidence |
 |---|---|---|
