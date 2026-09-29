@@ -1,0 +1,12 @@
+# Production considerations
+
+- **Uploads:** authenticate users, enforce per-user quotas, use resumable multipart direct-to-object-storage uploads with short-lived signed URLs and server-side completion validation. Keep the local assessment NFS path for compliance, not as a requirement for every future architecture.
+- **Media security:** treat FFmpeg input as hostile. Isolate workers, remove unnecessary network access, restrict demuxer protocols, patch codecs, enforce duration/resolution/CPU/disk/time limits and scan uploaded content. Do not expose this unauthenticated localhost demo.
+- **Processing:** use managed durable queues when scale requires scheduling, priorities, delayed retries or dead-letter handling. Keep idempotent per-attempt output publication and ownership fencing. Scale workers by queue age/length and resource demand; benchmark CPU versus GPU encoding and codec trade-offs.
+- **Storage:** use redundant object storage and lifecycle policies for media. If shared POSIX access is required, use a supported redundant NFS service. Separate database disks, backups, point-in-time recovery and restore drills. Add safe orphan reconciliation and retention; current demo does not implement it.
+- **Database:** managed PostgreSQL with failover and backups, dedicated migration role, runtime role limited to required tables, connection pooling and indexes based on actual load.
+- **Networking:** TLS, authentication/authorization, restricted origins, rate limits, private database/storage endpoints, network policies and egress restrictions. NFS AUTH_SYS and root_squash are not tenant isolation.
+- **Observability:** structured request/job IDs, job age, failure/retry counts, processing time by resolution, upload failures, storage capacity, resource saturation, service availability and alerts.
+- **Cost:** budget for encoding compute, temporary/original/rendition storage, egress, backups and idle resources. Run representative benchmarks before selecting instance sizes or promising processing times.
+- **Continuous integration and delivery:** dependency/image vulnerability scans, secret scanning, unit/integration tests, immutable image digests, signed artifacts, staging smoke/failure tests, reversible database migrations and explicit rollback validation.
+- **Cloud:** optional, never required for the assessment. Revisit storage classes, workload identity, ingress, secret management, load balancing, availability zones and cleanup costs. No cloud deployment or cost-bearing Azure change has been performed.

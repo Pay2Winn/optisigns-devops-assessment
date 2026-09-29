@@ -1,0 +1,9 @@
+PASS invalid MP4 rejected
+Uploaded 3840x2160 MP4 bdabf776-7e0d-4007-8fa5-7471a873cf26
+PASS output 2k 2560 1440 h264
+PASS output 1080p 1920 1080 h264
+PASS output 720p 1280 720 h264
+PASS output 480p 852 480 h264
+PASS output thumbnail 480 270 mjpeg
+PASS HTTP Range
+PASS video end-to-end {"id":"bdabf776-7e0d-4007-8fa5-7471a873cf26","status":"READY","originalUrl":"/media/bdabf776-7e0d-4007-8fa5-7471a873cf26/original.mp4","outputs":[{"label":"2k","url":"/media/bdabf776-7e0d-4007-8fa5-7471a873cf26/65fa7cfa-983a-4f1f-b1ca-b9b0ffeb92ff/2k.mp4","width":2560,"height":1440},{"label":"1080p","url":"/media/bdabf776-7e0d-4007-8fa5-7471a873cf26/65fa7cfa-983a-4f1f-b1ca-b9b0ffeb92ff/1080p.mp4","width":1920,"height":1080},{"label":"720p","url":"/media/bdabf776-7e0d-4007-8fa5-7471a873cf26/65fa7cfa-983a-4f1f-b1ca-b9b0ffeb92ff/720p.mp4","width":1280,"height":720},{"label":"480p","url":"/media/bdabf776-7e0d-4007-8fa5-7471a873cf26/65fa7cfa-983a-4f1f-b1ca-b9b0ffeb92ff/480p.mp4","width":852,"height":480},{"label":"thumbnail","url":"/media/bdabf776-7e0d-4007-8fa5-7471a873cf26/65fa7cfa-983a-4f1f-b1ca-b9b0ffeb92ff/thumbnail.jpg","width":null,"height":null}],"error":null}

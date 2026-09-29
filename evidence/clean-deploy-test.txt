@@ -1,0 +1,4 @@
+Deleting cluster "optisigns-assessment" ...
+ERROR: failed to delete cluster "optisigns-assessment": failed to delete nodes: command "docker rm -f -v optisigns-assessment-control-plane" failed with error: exit status 1
+
+Command Output: Error response from daemon: cannot remove container "optisigns-assessment-control-plane": could not kill container: tried to kill container, but did not receive an exit event

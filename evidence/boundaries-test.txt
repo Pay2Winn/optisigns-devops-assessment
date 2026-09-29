@@ -1,0 +1,6 @@
+2026-09-29T06:31:49.774Z
+PASS invalid video ID rejected
+PASS multipart without required preflight header rejected
+PASS ingress rejects oversized Content-Length without sending a huge body (streamed size enforcement not tested here)
+PASS interrupted multipart upload creates no video row (run without concurrent uploads)
+PASS unregistered temporary media path denied

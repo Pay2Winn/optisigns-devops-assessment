@@ -1,0 +1,21 @@
+NAME                         READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/backend      2/2     2            2           104m
+deployment.apps/frontend     2/2     2            2           104m
+deployment.apps/nfs-server   1/1     1            1           105m
+deployment.apps/postgres     1/1     1            1           105m
+deployment.apps/worker       1/1     1            1           104m
+
+NAME                              READY   STATUS    RESTARTS   AGE
+pod/backend-776876fc84-7sd6w      1/1     Running   0          4m25s
+pod/backend-776876fc84-rkhsg      1/1     Running   0          4m17s
+pod/frontend-788bb84764-6xbv6     1/1     Running   0          4m46s
+pod/frontend-788bb84764-st7vn     1/1     Running   0          104m
+pod/nfs-reader                    1/1     Running   0          105m
+pod/nfs-server-7785654f6b-h9ffb   1/1     Running   0          105m
+pod/nfs-writer                    1/1     Running   0          103m
+pod/postgres-7d8d88f89c-mkn78     1/1     Running   0          5m18s
+pod/worker-859cb645b4-nqs42       1/1     Running   0          2m23s
+
+NAME                                  STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/postgres-data   Bound    pvc-eb0c43d6-07b3-4feb-aa60-630a48eeab30   2Gi        RWO            standard       <unset>                 105m
+persistentvolumeclaim/uploads         Bound    optisigns-uploads                          10Gi       RWX                           <unset>                 105m
