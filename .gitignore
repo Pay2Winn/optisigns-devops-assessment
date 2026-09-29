@@ -1,7 +1,0 @@
-.local/
-node_modules/
-dist/
-.env
-.env.*
-*.log
-/OptiSigns-DevOps-K8s-Assessment.docx.pdf
