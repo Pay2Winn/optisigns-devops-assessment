@@ -14,29 +14,48 @@ env:
   ACR_SERVER: demoooo.azurecr.io
 
 jobs:
-  build:
-    name: Build and push images
+  changes:
+    name: Detect changed components
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      frontend: ${{ steps.detect.outputs.frontend }}
+      backend: ${{ steps.detect.outputs.backend }}
+    steps:
+      - name: Checkout source history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changes
+        id: detect
+        env:
+          GH_EVENT_NAME: ${{ github.event_name }}
+          GH_SHA: ${{ github.sha }}
+          GH_BEFORE: ${{ github.event.before }}
+          GH_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          GH_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/detect_changes.py
+
+  build-frontend:
+    name: Build frontend image
+    needs: changes
+    if: needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     outputs:
-      backend_digest: ${{ steps.push.outputs.backend_digest }}
-      frontend_digest: ${{ steps.push.outputs.frontend_digest }}
-
+      digest: ${{ steps.push.outputs.digest }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Build backend
-        run: |
-          docker build \
-            --tag "$ACR_SERVER/optisigns-backend:$GITHUB_SHA" \
-            ./backend
-
       - name: Build frontend
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build \
-            --tag "$ACR_SERVER/optisigns-frontend:$GITHUB_SHA" \
-            ./frontend
+          set -euo pipefail
+          short_sha="${IMAGE_TAG::7}"
+          docker build --tag "$ACR_SERVER/optisigns-frontend:$short_sha" ./frontend
 
       - name: Log in to ACR
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -44,24 +63,75 @@ jobs:
           ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
           ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
         run: |
-          test -n "$ACR_USERNAME" || { echo "Missing ACR_USERNAME"; exit 1; }
-          test -n "$ACR_PASSWORD" || { echo "Missing ACR_PASSWORD"; exit 1; }
-          printf '%s' "$ACR_PASSWORD" |
-            docker login "$ACR_SERVER" \
-              --username "$ACR_USERNAME" \
-              --password-stdin
+          set -euo pipefail
+          test -n "$ACR_USERNAME"
+          test -n "$ACR_PASSWORD"
+          printf '%s' "$ACR_PASSWORD" | docker login "$ACR_SERVER" --username "$ACR_USERNAME" --password-stdin
 
-      - name: Push images
+      - name: Push frontend
         id: push
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          for image in backend frontend; do
-            ref="$ACR_SERVER/optisigns-$image:$GITHUB_SHA"
-            docker push "$ref"
-            digest=$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest}}' | jq -er '.digest')
-            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
-            printf '%s_digest=%s\n' "$image" "$digest" >> "$GITHUB_OUTPUT"
-          done
+          set -euo pipefail
+          short_sha="${IMAGE_TAG::7}"
+          image="$ACR_SERVER/optisigns-frontend:$short_sha"
+          docker push "$image"
+          digest=$(docker buildx imagetools inspect "$image" --format '{{json .Manifest}}' | jq -er '.digest')
+          digest_pattern='^sha256:[0-9a-f]{64}$'
+          [[ "$digest" =~ $digest_pattern ]]
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Log out of ACR
+        if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: docker logout "$ACR_SERVER"
+
+  build-backend:
+    name: Build backend image
+    needs: changes
+    if: needs.changes.result == 'success' && needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Build backend
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          short_sha="${IMAGE_TAG::7}"
+          docker build --tag "$ACR_SERVER/optisigns-backend:$short_sha" ./backend
+
+      - name: Log in to ACR
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$ACR_USERNAME"
+          test -n "$ACR_PASSWORD"
+          printf '%s' "$ACR_PASSWORD" | docker login "$ACR_SERVER" --username "$ACR_USERNAME" --password-stdin
+
+      - name: Push backend
+        id: push
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          short_sha="${IMAGE_TAG::7}"
+          image="$ACR_SERVER/optisigns-backend:$short_sha"
+          docker push "$image"
+          digest=$(docker buildx imagetools inspect "$image" --format '{{json .Manifest}}' | jq -er '.digest')
+          digest_pattern='^sha256:[0-9a-f]{64}$'
+          [[ "$digest" =~ $digest_pattern ]]
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
 
       - name: Log out of ACR
         if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -69,8 +139,13 @@ jobs:
 
   update-gitops:
     name: Update GitOps images
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [changes, build-frontend, build-backend]
+    if: >-
+      always() && !cancelled() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' &&
+      needs.changes.result == 'success' &&
+      (needs.build-frontend.result == 'success' || needs.build-backend.result == 'success') &&
+      (needs.build-frontend.result == 'success' || needs.build-frontend.result == 'skipped') &&
+      (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -83,6 +158,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: gitops
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -97,36 +173,76 @@ jobs:
 
       - name: Update, validate and push image references
         env:
-          BACKEND_DIGEST: ${{ needs.build.outputs.backend_digest }}
-          FRONTEND_DIGEST: ${{ needs.build.outputs.frontend_digest }}
+          BACKEND_DIGEST: ${{ needs.build-backend.outputs.digest }}
+          BACKEND_RESULT: ${{ needs.build-backend.result }}
+          FRONTEND_DIGEST: ${{ needs.build-frontend.outputs.digest }}
+          FRONTEND_RESULT: ${{ needs.build-frontend.result }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
-          [[ "$BACKEND_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
-          [[ "$FRONTEND_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          sha_pattern='^[0-9a-f]{40}$'
+          digest_pattern='^sha256:[0-9a-f]{64}$'
+          [[ "$SOURCE_SHA" =~ $sha_pattern ]]
+          short_sha="${SOURCE_SHA::7}"
+          update_backend=false
+          update_frontend=false
+
+          if [[ "$BACKEND_RESULT" == success ]]; then
+            [[ "$BACKEND_DIGEST" =~ $digest_pattern ]]
+            update_backend=true
+          fi
+          if [[ "$FRONTEND_RESULT" == success ]]; then
+            [[ "$FRONTEND_DIGEST" =~ $digest_pattern ]]
+            update_frontend=true
+          fi
 
           git fetch origin main
-          if [[ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]]; then
-            echo "Skip stale build: main has a newer commit."
+          git merge-base --is-ancestor "$SOURCE_SHA" origin/main || {
+            echo "Refusing GitOps update: source commit is not an ancestor of main."
+            exit 1
+          }
+          if ! git diff --quiet "$SOURCE_SHA" origin/main -- backend/ .github/workflows/ scripts/; then
+            echo "Skip stale backend image: a newer relevant change is on main."
+            update_backend=false
+          fi
+          if ! git diff --quiet "$SOURCE_SHA" origin/main -- frontend/ .github/workflows/ scripts/; then
+            echo "Skip stale frontend image: a newer relevant change is on main."
+            update_frontend=false
+          fi
+          if [[ "$update_backend" == false && "$update_frontend" == false ]]; then
+            echo "No current image update remains."
             exit 0
           fi
 
           cd apps/assessment
-          backend="$ACR_SERVER/optisigns-backend:$GITHUB_SHA@$BACKEND_DIGEST"
-          frontend="$ACR_SERVER/optisigns-frontend:$GITHUB_SHA@$FRONTEND_DIGEST"
-          kustomize edit set image \
-            "$ACR_SERVER/optisigns-backend=$backend" \
-            "$ACR_SERVER/optisigns-frontend=$frontend"
+          kustomize build . > "$RUNNER_TEMP/assessment-before.yaml"
+          backend="$ACR_SERVER/optisigns-backend:$short_sha@$BACKEND_DIGEST"
+          frontend="$ACR_SERVER/optisigns-frontend:$short_sha@$FRONTEND_DIGEST"
+          old_backend=$(grep -F "image: $ACR_SERVER/optisigns-backend:" "$RUNNER_TEMP/assessment-before.yaml" | sort -u)
+          old_frontend=$(grep -F "image: $ACR_SERVER/optisigns-frontend:" "$RUNNER_TEMP/assessment-before.yaml" | sort -u)
+          [[ $(printf '%s\n' "$old_backend" | wc -l) -eq 1 ]]
+          [[ $(printf '%s\n' "$old_frontend" | wc -l) -eq 1 ]]
+
+          images=()
+          [[ "$update_backend" == true ]] && images+=("$ACR_SERVER/optisigns-backend=$backend")
+          [[ "$update_frontend" == true ]] && images+=("$ACR_SERVER/optisigns-frontend=$frontend")
+          kustomize edit set image "${images[@]}"
           kustomize build . > "$RUNNER_TEMP/assessment-rendered.yaml"
-          # Backend and worker must share the new backend image; frontend uses its own.
-          test "$(grep -Fc "image: $backend" "$RUNNER_TEMP/assessment-rendered.yaml")" -eq 2
-          test "$(grep -Fc "image: $frontend" "$RUNNER_TEMP/assessment-rendered.yaml")" -eq 1
+          if [[ "$update_backend" == true ]]; then
+            test "$(grep -Fc "image: $backend" "$RUNNER_TEMP/assessment-rendered.yaml")" -eq 2
+          else
+            test "$(grep -Fc "$old_backend" "$RUNNER_TEMP/assessment-rendered.yaml")" -eq 2
+          fi
+          if [[ "$update_frontend" == true ]]; then
+            test "$(grep -Fc "image: $frontend" "$RUNNER_TEMP/assessment-rendered.yaml")" -eq 1
+          else
+            test "$(grep -Fc "$old_frontend" "$RUNNER_TEMP/assessment-rendered.yaml")" -eq 1
+          fi
           if grep -Eq '^kind: Secret$' "$RUNNER_TEMP/assessment-rendered.yaml"; then
             echo "Unexpected Secret in GitOps manifests."
             exit 1
           fi
 
-          git diff --exit-code -- backend.yaml frontend.yaml
           git add kustomization.yaml
           if git diff --cached --quiet; then
             echo "Image references are already current."
@@ -134,11 +250,19 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m "gitops: deploy $GITHUB_SHA"
+          git commit -m "gitops: deploy $short_sha"
 
           git fetch origin main
-          if [[ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]]; then
-            echo "Skip stale build: main changed during validation."
+          git merge-base --is-ancestor "$SOURCE_SHA" origin/main || {
+            echo "Refusing GitOps push: source commit is no longer an ancestor of main."
+            exit 1
+          }
+          if [[ "$update_backend" == true ]] && ! git diff --quiet "$SOURCE_SHA" origin/main -- backend/ .github/workflows/ scripts/; then
+            echo "Skip GitOps push: backend image became stale during validation."
+            exit 0
+          fi
+          if [[ "$update_frontend" == true ]] && ! git diff --quiet "$SOURCE_SHA" origin/main -- frontend/ .github/workflows/ scripts/; then
+            echo "Skip GitOps push: frontend image became stale during validation."
             exit 0
           fi
           git push origin HEAD:gitops
