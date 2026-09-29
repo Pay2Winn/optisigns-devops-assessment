@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: assessment
+  namespace: argocd
+spec:
+  description: Stateless assessment workloads only; storage and secrets remain external.
+  sourceRepos:
+    - git@github.com:Pay2Winn/optisigns-devops-assessment.git
+  destinations:
+    - namespace: optisigns-assessment
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: ''
+      kind: Service
+    - group: policy
+      kind: PodDisruptionBudget
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: assessment
+  namespace: argocd
+spec:
+  project: assessment
+  source:
+    repoURL: git@github.com:Pay2Winn/optisigns-devops-assessment.git
+    targetRevision: gitops
+    path: apps/assessment
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: optisigns-assessment
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: false
+    syncOptions:
+      - FailOnSharedResource=true
