@@ -18,6 +18,9 @@ jobs:
     name: Build and push images
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    outputs:
+      backend_digest: ${{ steps.push.outputs.backend_digest }}
+      frontend_digest: ${{ steps.push.outputs.frontend_digest }}
 
     steps:
       - name: Checkout source
@@ -49,11 +52,93 @@ jobs:
               --password-stdin
 
       - name: Push images
+        id: push
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
-          docker push "$ACR_SERVER/optisigns-backend:$GITHUB_SHA"
-          docker push "$ACR_SERVER/optisigns-frontend:$GITHUB_SHA"
+          for image in backend frontend; do
+            ref="$ACR_SERVER/optisigns-$image:$GITHUB_SHA"
+            docker push "$ref"
+            digest=$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest}}' | jq -er '.digest')
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+            printf '%s_digest=%s\n' "$image" "$digest" >> "$GITHUB_OUTPUT"
+          done
 
       - name: Log out of ACR
         if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: docker logout "$ACR_SERVER"
+
+  update-gitops:
+    name: Update GitOps images
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: assessment-gitops
+      cancel-in-progress: false
+    steps:
+      - name: Checkout GitOps branch
+        uses: actions/checkout@v4
+        with:
+          ref: gitops
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.2'
+          cache: false
+
+      - name: Install pinned Kustomize
+        run: |
+          go install sigs.k8s.io/kustomize/kustomize/v5@v5.6.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Update, validate and push image references
+        env:
+          BACKEND_DIGEST: ${{ needs.build.outputs.backend_digest }}
+          FRONTEND_DIGEST: ${{ needs.build.outputs.frontend_digest }}
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$BACKEND_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "$FRONTEND_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+
+          git fetch origin main
+          if [[ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]]; then
+            echo "Skip stale build: main has a newer commit."
+            exit 0
+          fi
+
+          cd apps/assessment
+          backend="$ACR_SERVER/optisigns-backend:$GITHUB_SHA@$BACKEND_DIGEST"
+          frontend="$ACR_SERVER/optisigns-frontend:$GITHUB_SHA@$FRONTEND_DIGEST"
+          kustomize edit set image \
+            "$ACR_SERVER/optisigns-backend=$backend" \
+            "$ACR_SERVER/optisigns-frontend=$frontend"
+          kustomize build . > "$RUNNER_TEMP/assessment-rendered.yaml"
+          # Backend and worker must share the new backend image; frontend uses its own.
+          test "$(grep -Fc "image: $backend" "$RUNNER_TEMP/assessment-rendered.yaml")" -eq 2
+          test "$(grep -Fc "image: $frontend" "$RUNNER_TEMP/assessment-rendered.yaml")" -eq 1
+          if grep -Eq '^kind: Secret$' "$RUNNER_TEMP/assessment-rendered.yaml"; then
+            echo "Unexpected Secret in GitOps manifests."
+            exit 1
+          fi
+
+          git diff --exit-code -- backend.yaml frontend.yaml
+          git add kustomization.yaml
+          if git diff --cached --quiet; then
+            echo "Image references are already current."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "gitops: deploy $GITHUB_SHA"
+
+          git fetch origin main
+          if [[ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]]; then
+            echo "Skip stale build: main changed during validation."
+            exit 0
+          fi
+          git push origin HEAD:gitops
