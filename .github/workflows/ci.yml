@@ -1,0 +1,27 @@
+name: Assessment CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build backend and frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Build backend
+        run: docker build --tag optisigns-backend:${{ github.sha }} ./backend
+
+      - name: Build frontend
+        run: docker build --tag optisigns-frontend:${{ github.sha }} ./frontend
