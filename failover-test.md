@@ -18,6 +18,10 @@ The cases below describe tests against the dedicated local kind cluster, not Azu
 
 These are finite observations, not a zero-downtime guarantee. Requests were sampled roughly every 100ms plus request latency.
 
+## Optional AKS acceptance run
+
+The [2026-09-30 AKS evidence summary](docs/evidence/aks-acceptance-2026-09-30.md) records the new portrait 4K sample, backend/frontend/PostgreSQL Pod replacement, unchanged media hashes, worker retry after normal Pod replacement, queue checks, configuration rollout/restoration and input validation. It is a retrospective summary of observed results, not a raw transcript. Request sampling failed, so no downtime measurement or zero-downtime claim is available. These cloud results do not replace the required local tests above.
+
 ## Failures found and corrected
 
 The first NFS launch was OOMKilled during rpc.mountd startup. Bounding open descriptors to 1024 allowed startup under the same 256Mi memory limit.

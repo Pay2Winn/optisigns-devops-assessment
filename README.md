@@ -98,7 +98,7 @@ An additional deployment has run on Azure Kubernetes Service (AKS), using Azure 
 - Kustomize manages image references; one Argo CD Application automatically synchronizes changes to the cluster.
 - Configuration: [GitHub Actions workflow](.github/workflows/ci.yml) and [Argo CD Application](deploy/argocd/application.yaml). Workload manifests are on `gitops` under `apps/assessment/`.
 
-The assignment's explicit optional bonus is cloud deployment; this automation supports it. A complete cloud provisioning, cost estimate and cleanup runbook is still outstanding. Cloud resources are not needed for the local instructions above.
+The assignment's explicit optional bonus is cloud deployment; this automation supports it. See [cloud bonus scope and evidence](docs/cloud-bonus.md), [AKS acceptance results](docs/evidence/aks-acceptance-2026-09-30.md), and the separate [infrastructure branch](https://github.com/Pay2Winn/optisigns-devops-assessment/tree/infrastructure) for Terraform, cost assumptions and cleanup instructions. Terraform is a reference, not a verified reproduction of the live AKS deployment. `main` is the submission branch; cloud resources are not needed for the local instructions above.
 
 ## Limits and troubleshooting
 
