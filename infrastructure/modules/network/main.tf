@@ -12,6 +12,5 @@ resource "azurerm_subnet" "aks" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.this.name
   address_prefixes     = ["10.40.0.0/22"]
-  service_endpoints    = ["Microsoft.Storage"]
 }
 output "subnet_id" { value = azurerm_subnet.aks.id }

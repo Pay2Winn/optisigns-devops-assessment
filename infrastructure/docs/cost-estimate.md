@@ -14,7 +14,7 @@ Prepared 2026-09-30. Region: Southeast Asia. Currency: USD. Consumption/pay-as-y
 | Standard Load Balancer | AKS outbound LB | Rules/hour and processed-data charges as applicable |
 | Public IPv4 | AKS outbound IP; ingress may add more | Allocated IP hours × rate |
 | Egress | Internet/inter-region as used | Billable GiB × applicable tier rate |
-| Application NFS | Premium FileStorage LRS, 100 GiB provisioned | 100 × regional provisioned-capacity monthly rate; verify applicable meter and additional charges |
+| Application NFS | Existing self-hosted NFS server, no Azure Files | Compute consumption on its host plus backing disk capacity/transactions; do not double-count compute already included in AKS nodes |
 | PostgreSQL disk | StandardSSD_LRS, dynamically provisioned on consumption | Requested disk tier/capacity monthly rate plus applicable transactions; PVC is application-owned |
 | Monitoring | No paid log workspace provisioned | Add ingestion/retention costs if enabled later |
 

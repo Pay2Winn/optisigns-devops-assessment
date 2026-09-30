@@ -5,7 +5,7 @@
 | Cluster | kind on a local Docker host | AKS Free management tier, two paid VM nodes |
 | Access | localhost:8080, local-only unauthenticated default | Restricted public management API; application HTTPS/authentication must be configured separately |
 | Images | Local image builds/loading | Basic ACR, kubelet identity pull; image build/push outside Terraform |
-| Media | Local NFS server and shared persistent volume | Application NFS storage is an explicit missing prerequisite, not the state Blob account |
+| Media | Local NFS server and shared persistent volume | Existing self-hosted NFS server and application-managed volumes; no Azure Files; Blob is state only |
 | Database | Local PostgreSQL persistent volume | Database workload/storage/bootstrap must be provided by GitOps/operator |
 | Secrets | Local Kubernetes setup | Entra Workload Identity, dedicated vault, CSI secret synchronization; values supplied outside state |
 | Deployment | Local shell scripts and manifests | Terraform Azure/platform, Argo CD for application workloads |
