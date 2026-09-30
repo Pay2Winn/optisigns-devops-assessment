@@ -15,7 +15,7 @@ metadata:
   name: backend
   namespace: optisigns-assessment
 spec:
-  replicas: 2
+  replicas: 1
   minReadySeconds: 5
   strategy:
     rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
