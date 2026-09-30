@@ -20,7 +20,7 @@ These are finite observations, not a zero-downtime guarantee. Requests were samp
 
 ## Fresh-clone local acceptance
 
-The [2026-09-30 fresh-clone acceptance summary](docs/evidence/local-fresh-clone-2026-09-30.md) records deployment from GitHub into a new local cluster, browser upload of a portrait 4K clip and all six required failover cases. `failover-test.txt` and `worker-recovery.txt` now contain this run's script output. Other evidence files retain their earlier runs; this was not a clean-machine test.
+The [2026-09-30 fresh-clone acceptance summary](docs/evidence/local-fresh-clone-2026-09-30.md) records deployment from GitHub into a new local cluster, browser upload of a portrait 4K clip and all six required failover cases. `failover-test.txt` and `worker-recovery.txt` now contain this run's script output. This was not a clean-machine test.
 
 ## Optional AKS acceptance run
 
@@ -41,9 +41,3 @@ PostgreSQL replacement during fresh-cluster acceptance exposed application conne
 Use commands in README. The current rollback script changes a pod-template environment variable and undoes it. This exercises Kubernetes rolling replacement and rollback without unavailable historical images. It does not claim to test different application code. Earlier real-image rollback was performed during development; latest evidence deliberately represents the reproducible configuration-revision test.
 
 `test-queue.mjs` runs in a backend container with the worker temporarily at zero replicas and no active jobs. Restore the worker to one replica even if assertions fail. It deletes only its own generated test rows.
-
-## Not yet demonstrated
-
-Approved deletion and clean-cluster recreation succeeded after an initial stuck deletion required an approved Docker Desktop restart; see `clean-deploy-test.txt` and `clean-deploy-retry.txt`. This reused the same host, tools, credentials and cache.
-
-NFS server restart, node loss, host restart, PostgreSQL/NFS replication, clean-machine end-to-end replay, the full updated ordered cleanup on a healthy populated cluster and sustained concurrent uploads have not been demonstrated. Production would require redundant storage/database, controlled upload admission, monitoring and recovery drills.

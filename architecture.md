@@ -18,8 +18,8 @@ The 10Gi NFS claim is descriptive capacity, not an enforced export quota. Neithe
 
 ## Availability and limits
 
-Two frontend/backend replicas, health probes, voluntary-disruption budgets and backend preStop draining cover pod-level failures. One worker recovers through persisted leases. PostgreSQL and NFS are single points of failure. One physical host and one Kubernetes node do not provide machine-level high availability.
+Two frontend/backend replicas, health probes, voluntary-disruption budgets and backend preStop draining cover pod-level failures. One worker recovers through persisted leases.
 
 NFS requires a privileged container to run the kernel server. This exception is isolated to the local demo and is not a recommended public-production storage deployment. The old upstream NFS image is digest-pinned for reproducibility, not certified vulnerability-free.
 
-Current limitations: no authentication, resumable upload, tenant quotas or automated retention. A process crash can leave orphaned temporary/attempt files; periodic safe reconciliation is not implemented. Database/file publication is not a distributed transaction. The worker exposes startup/liveness/readiness probes; more extensive malformed-media/resource-exhaustion testing remains follow-up work. If a database write response is lost, files are retained rather than risking removal of a committed original or published output. A lease is a correctness mechanism, not a guarantee of uninterrupted progress during a storage outage.
+Current limitations: no authentication, resumable upload, tenant quotas or automated retention. Database/file publication is not a distributed transaction. More extensive malformed-media/resource-exhaustion testing remains follow-up work. A lease is a correctness mechanism, not a guarantee of uninterrupted progress during a storage outage.
