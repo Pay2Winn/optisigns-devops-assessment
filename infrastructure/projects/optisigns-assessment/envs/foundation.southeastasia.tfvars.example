@@ -1,0 +1,10 @@
+subscription_id = "00000000-0000-0000-0000-000000000000"
+tenant_id       = "00000000-0000-0000-0000-000000000000"
+prefix          = "assessment"
+location        = "southeastasia"
+acr_name        = "replacewithuniqueacrname"
+vault_name      = "replace-with-unique-vault"
+admin_group_ids = ["00000000-0000-0000-0000-000000000000"]
+authorized_cidrs = [
+  "203.0.113.10/32",
+]

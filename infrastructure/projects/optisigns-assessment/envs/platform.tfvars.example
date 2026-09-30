@@ -1,0 +1,8 @@
+kubeconfig_path   = "C:/path/to/new-cluster-kubeconfig"
+kube_context      = "new-aks-context"
+backend_client_id = "00000000-0000-0000-0000-000000000000"
+tenant_id         = "00000000-0000-0000-0000-000000000000"
+vault_name        = "replace-with-foundation-vault-name"
+
+# Keep false until storage, secrets, image references and GitOps ownership are ready.
+enable_application = false

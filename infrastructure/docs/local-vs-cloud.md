@@ -8,7 +8,7 @@
 | Media | Local NFS server and shared persistent volume | Existing self-hosted NFS server and application-managed volumes; no Azure Files; Blob is state only |
 | Database | Local PostgreSQL persistent volume | Database workload/storage/bootstrap must be provided by GitOps/operator |
 | Secrets | Local Kubernetes setup | Entra Workload Identity, dedicated vault, CSI secret synchronization; values supplied outside state |
-| Deployment | Local shell scripts and manifests | Terraform Azure/platform, Argo CD for application workloads |
+| Deployment | Local shell scripts and manifests | Terraform foundation/platform project roots, Argo CD for application workloads |
 | State | No Terraform needed | Separate Blob keys and per-key lease locking |
 | Resilience | Pod replacement; single-host/NFS/database limitations | Two nodes do not remove database/storage single points of failure; no claim of zone redundancy |
 | Cost | Local host resources; no paid cloud required | Compute, disks, registry, network, storage and operations |
