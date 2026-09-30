@@ -1,0 +1,59 @@
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: backend-keyvault
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "false"
+    clientID: {{ required "clientId required" .Values.clientId | quote }}
+    tenantId: {{ required "tenantId required" .Values.tenantId | quote }}
+    keyvaultName: {{ required "vaultName required" .Values.vaultName | quote }}
+    objects: |
+      array:
+        - |
+          objectName: assessment-db-password
+          objectType: secret
+          objectAlias: database-password
+          filePermission: "0440"
+        - |
+          objectName: assessment-auth-username
+          objectType: secret
+          objectAlias: auth-username
+          filePermission: "0440"
+        - |
+          objectName: assessment-auth-password-hash
+          objectType: secret
+          objectAlias: auth-password-hash
+          filePermission: "0440"
+  secretObjects:
+    - secretName: backend-keyvault-env
+      type: Opaque
+      data:
+        - objectName: database-password
+          key: PGPASSWORD
+        - objectName: auth-username
+          key: AUTH_USERNAME
+        - objectName: auth-password-hash
+          key: AUTH_PASSWORD_HASH
+{{ if .Values.enableApplication }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: assessment
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.repositoryUrl | quote }}
+    targetRevision: {{ .Values.revision | quote }}
+    path: apps/assessment
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Release.Namespace }}
+  syncPolicy:
+    syncOptions:
+      - FailOnSharedResource=true
+{{ end }}

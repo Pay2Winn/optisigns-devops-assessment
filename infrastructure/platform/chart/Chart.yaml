@@ -1,0 +1,4 @@
+apiVersion: v2
+name: assessment-bootstrap
+version: 0.1.0
+description: Terraform-owned Key Vault prerequisites and optional Argo Application
