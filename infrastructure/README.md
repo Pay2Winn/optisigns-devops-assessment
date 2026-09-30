@@ -17,7 +17,11 @@ This branch is a reviewable Terraform design, **not an export/import of the runn
 
 VNet itself is not public. This budget reference uses public service endpoints (ACR, vault, state storage); containers are private and access is authenticated. Private endpoints, network isolation, advanced monitoring and highly available Argo CD are not included. Standard Load Balancer is intentional; “Basic budget” does not mean obsolete Basic networking SKUs.
 
-**Not included:** application shared NFS storage, PostgreSQL disks/data/bootstrap, application ingress/TLS, container builds, secret values and private Git credentials. State Blob storage is NOT application NFS storage. Supply these prerequisites and adapt the GitOps manifests before enabling the Application. Existing `gitops` images, storage bindings, public origin and external names are environment-specific; pointing a fresh cluster at them does not produce a working clone automatically.
+**Application storage:** `azure/storage.tf` creates a separate Premium FileStorage LRS account and 100 GiB Azure Files NFS share. Its firewall allows only the AKS subnet through a Storage service endpoint. NFS requires HTTPS-only enforcement disabled on this dedicated account; this does not disable HTTPS on the state account. NFS permissions are not Entra user isolation. `platform/storage.tf` defines the shared uploads PV/PVC with Retain and a StandardSSD_LRS PostgreSQL StorageClass. Database disk provisioning happens only when an Argo-owned PVC and consumer request that class. Blob storage is ONLY Terraform state, never media.
+
+Required additional inputs: Azure `media_account_name`; platform `media_account_name` and `media_resource_group` from `terraform output media_storage`. The uploads share name is `uploads`. Application Pods must use compatible UID/GID and fsGroup (the assessment uses 1000); verify permissions during a real mount test.
+
+**Not included:** PostgreSQL workload/data bootstrap, application ingress/TLS, container builds, secret values and private Git credentials. Adapt GitOps before activation: exclude its uploads PV/PVC and `assessment-disk-retain` StorageClass because Terraform now owns them; retain PostgreSQL PVC/workload in GitOps. Existing image digests, origin and storage names are environment-specific. Do not synchronize the unmodified live branch into a fresh environment.
 
 ## Prerequisites
 

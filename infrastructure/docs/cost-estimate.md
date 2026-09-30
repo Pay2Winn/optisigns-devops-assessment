@@ -1,6 +1,6 @@
 # Cost estimate methodology
 
-Prepared 2026-09-30. Region: Southeast Asia. Currency: USD. Consumption/pay-as-you-go, Linux, 730 hours/month, two nodes, no reserved instances or negotiated discounts. This is a budget worksheet, not a bill or verified live quotation. Unit rates have not been retrieved/verified; a numeric monthly total is deliberately not invented.
+Prepared 2026-09-30. Region: Southeast Asia. Currency: USD. Consumption/pay-as-you-go, Linux, 730 hours/month, two nodes, no reserved instances or negotiated discounts. This is a budget worksheet, not a bill or verified live quotation. The public Retail Prices API returned Linux Standard_D2s_v5 consumption at USD 0.12/hour in Southeast Asia during this authoring session (meter effective date 2021-11-01). Two nodes at 730 hours therefore cost **USD 175.20/month for compute alone**, excluding disks and all other services. This is not the total cluster bill. Other unit rates remain unverified; a full monthly total is deliberately not invented.
 
 | Item | Budget configuration | Monthly calculation |
 |---|---|---|
@@ -14,7 +14,8 @@ Prepared 2026-09-30. Region: Southeast Asia. Currency: USD. Consumption/pay-as-y
 | Standard Load Balancer | AKS outbound LB | Rules/hour and processed-data charges as applicable |
 | Public IPv4 | AKS outbound IP; ingress may add more | Allocated IP hours × rate |
 | Egress | Internet/inter-region as used | Billable GiB × applicable tier rate |
-| Application storage/database | NOT included in these modules | Add NFS service capacity/transactions and PostgreSQL disk before quoting a full application total |
+| Application NFS | Premium FileStorage LRS, 100 GiB provisioned | 100 × regional provisioned-capacity monthly rate; verify applicable meter and additional charges |
+| PostgreSQL disk | StandardSSD_LRS, dynamically provisioned on consumption | Requested disk tier/capacity monthly rate plus applicable transactions; PVC is application-owned |
 | Monitoring | No paid log workspace provisioned | Add ingestion/retention costs if enabled later |
 
 Argo CD has no separate software service fee here, but consumes node CPU/memory. Two small nodes are a cost-oriented example, not benchmarked transcoding capacity or a high-availability guarantee. Application LoadBalancer/ingress, private endpoints, backups and support/taxes may add charges. State storage remains billable after application cleanup. Purge-protected vault names cannot immediately be reused after deletion.

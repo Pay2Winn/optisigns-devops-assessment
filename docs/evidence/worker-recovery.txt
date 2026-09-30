@@ -1,3 +1,0 @@
-2026-09-29T06:32:41.835Z
-Job 062e3102-a8c9-4359-b522-e266b9268dcd PROCESSING; stop worker container abruptly in pod worker-859cb645b4-mcgxc
-PASS abrupt worker failure recovered, attempts=2, status=READY, all five outputs HTTP 200
