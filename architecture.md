@@ -2,7 +2,7 @@
 
 ## Components and flow
 
-The browser accesses localhost:8080, mapped by kind to the frontend NodePort. Two unprivileged Nginx/React replicas serve the interface and proxy GraphQL/media requests to two NestJS replicas. This is a stable Service endpoint, not a port-forward tied to one pod.
+The browser accesses localhost:8080, mapped by kind to the frontend NodePort. One unprivileged Nginx/React replica serves the interface and proxies GraphQL/media requests to one NestJS replica. This is a stable Service endpoint, not a port-forward tied to one pod.
 
 GraphQL multipart upload is buffered to temporary disk by graphql-upload and streamed to an NFS temporary file. FFprobe validates video content and limits; a same-directory rename publishes the original before a PostgreSQL job is inserted. Listing/status/output metadata use GraphQL; video bytes use HTTP with Range support. Only recorded originals and READY outputs are served.
 
@@ -18,7 +18,7 @@ The 10Gi NFS claim is descriptive capacity, not an enforced export quota. Neithe
 
 ## Availability and limits
 
-Two frontend/backend replicas, health probes, voluntary-disruption budgets and backend preStop draining cover pod-level failures. One worker recovers through persisted leases.
+Health probes, voluntary-disruption budgets and backend preStop draining support controlled pod replacement. With one frontend/backend replica, an unplanned pod loss can interrupt requests until its replacement is ready. One worker recovers through persisted leases.
 
 NFS requires a privileged container to run the kernel server. This exception is isolated to the local demo and is not a recommended public-production storage deployment. The old upstream NFS image is digest-pinned for reproducibility, not certified vulnerability-free.
 
