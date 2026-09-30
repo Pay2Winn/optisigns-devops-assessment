@@ -1,5 +1,5 @@
-2026-09-29T06:31:52.004Z
+2026-09-30T06:35:57.030Z
 backend pod replacement: {"ok":106,"failed":0}; old UID absent
-frontend pod replacement: {"ok":17,"failed":0}; old UID absent
+frontend pod replacement: {"ok":24,"failed":0}; old UID absent
 PASS original and all processed output SHA256 unchanged after backend/frontend replacement
-PASS pod-template configuration rollout and rollback: {"ok":295,"failed":0}; baseline container configuration restored; all checksums unchanged
+PASS pod-template configuration rollout and rollback: {"ok":337,"failed":0}; baseline container configuration restored; all checksums unchanged

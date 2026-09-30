@@ -18,6 +18,10 @@ The cases below describe tests against the dedicated local kind cluster, not Azu
 
 These are finite observations, not a zero-downtime guarantee. Requests were sampled roughly every 100ms plus request latency.
 
+## Fresh-clone local acceptance
+
+The [2026-09-30 fresh-clone acceptance summary](docs/evidence/local-fresh-clone-2026-09-30.md) records deployment from GitHub into a new local cluster, browser upload of a portrait 4K clip and all six required failover cases. `failover-test.txt` and `worker-recovery.txt` now contain this run's script output. Other evidence files retain their earlier runs; this was not a clean-machine test.
+
 ## Optional AKS acceptance run
 
 The [2026-09-30 AKS evidence summary](docs/evidence/aks-acceptance-2026-09-30.md) records the new portrait 4K sample, backend/frontend/PostgreSQL Pod replacement, unchanged media hashes, worker retry after normal Pod replacement, queue checks, configuration rollout/restoration and input validation. It is a retrospective summary of observed results, not a raw transcript. Request sampling failed, so no downtime measurement or zero-downtime claim is available. These cloud results do not replace the required local tests above.
