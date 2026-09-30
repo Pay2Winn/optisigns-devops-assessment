@@ -23,8 +23,11 @@ spec:
     matchLabels: {app: backend}
   template:
     metadata:
-      labels: {app: backend}
+      labels:
+        app: backend
+        azure.workload.identity/use: "true"
     spec:
+      serviceAccountName: backend-keyvault
       automountServiceAccountToken: false
       securityContext:
         runAsUser: 1000
@@ -36,7 +39,7 @@ spec:
           image: demoooo.azurecr.io/optisigns-backend:7de33692047c289cdbf1640082a42bf0f5983420@sha256:9f368f14fbbc43e395c4a7e3c7d21f5788ad62d7fe939f67620c3a6ca84af77f
           imagePullPolicy: IfNotPresent
           envFrom:
-            - secretRef: {name: reviewer-auth}
+            - secretRef: {name: backend-keyvault-env}
           env:
             - name: AUTH_ENABLED
               value: "true"
@@ -48,7 +51,7 @@ spec:
               value: video_app
             - name: PGPASSWORD
               valueFrom:
-                secretKeyRef: {name: video-app, key: password}
+                secretKeyRef: {name: backend-keyvault-env, key: PGPASSWORD}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities: {drop: [ALL]}
@@ -74,9 +77,18 @@ spec:
           volumeMounts:
             - name: uploads
               mountPath: /uploads
+            - name: keyvault-secrets
+              mountPath: /mnt/secrets-store
+              readOnly: true
       volumes:
         - name: uploads
           persistentVolumeClaim: {claimName: uploads}
+        - name: keyvault-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: backend-keyvault
 ---
 apiVersion: apps/v1
 kind: Deployment
